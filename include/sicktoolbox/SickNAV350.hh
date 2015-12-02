@@ -38,7 +38,7 @@
 #include <pthread.h>
 #include <arpa/inet.h>
 #include <stdlib.h>
-//#include <stdio.h>
+//#include <stdint.h>
 #include "sicktoolbox/SickLIDAR.hh"
 #include "sicktoolbox/SickNAV350BufferMonitor.hh"
 #include "sicktoolbox/SickNAV350Message.hh"
@@ -137,6 +137,25 @@ class SickNav350 : public SickLIDAR< SickNav350BufferMonitor, SickNav350Message 
 
     static const std::string GETDATANAVIGATION_COMMAND_TYPE;
     static const std::string GETDATANAVIGATION_COMMAND;
+
+    static const std::string DOMAPPING_COMMAND_TYPE;
+    static const std::string DOMAPPING_COMMAND;
+
+    static const std::string CONFIGMAPPING_COMMAND_TYPE;
+    static const std::string CONFIGMAPPING_COMMAND;
+
+    static const std::string SETCURRLAYER_COMMAND_TYPE;
+    static const std::string SETCURRLAYER_COMMAND;
+
+    static const std::string SETREFTYPE_COMMAND_TYPE;
+    static const std::string SETREFTYPE_COMMAND;
+
+    static const std::string SETREFSIZE_COMMAND_TYPE;
+    static const std::string SETREFSIZE_COMMAND;
+
+    static const std::string ADDLANDMARK_COMMAND_TYPE;
+    static const std::string ADDLANDMARK_COMMAND;
+
 
     /**
      * \struct sick_nav350_config_global_tag
@@ -325,7 +344,9 @@ class SickNav350 : public SickLIDAR< SickNav350BufferMonitor, SickNav350Message 
 
     void GetDataNavigation(int wait,int dataset);
 
-    /**Get Measurements*/
+    void DoMapping();
+
+    		/**Get Measurements*/
     void GetSickMeasurements(double* range_values,unsigned int *num_measurements,
     		double *sector_step_angle,
     		double *sector_start_angle,
@@ -337,6 +358,14 @@ class SickNav350 : public SickLIDAR< SickNav350BufferMonitor, SickNav350Message 
     void GetResponseFromCustomMessage(uint8_t *req,int req_size,uint8_t *res,int *res_size);
 
     void SetSpeed(double x,double y,double phi,int timestamp,int coordbase);
+
+    /** Sequence for reflector mapping */
+    void ConfigureMapping(uint8_t mean,uint8_t neg,double x,double y,double phi);
+    void SetCurrentLayer(uint16_t currLayer);
+    void SetReflectorType(int type);
+    void SetReflectorSize(uint16_t size);
+
+    void AddLandmark(uint16_t landmarkData,double x, double y,int type,int subtype,uint16_t size,uint16_t layerID,uint16_t ID);
     /** Destructor */
     ~SickNav350();
 
@@ -378,6 +407,9 @@ class SickNav350 : public SickLIDAR< SickNav350BufferMonitor, SickNav350Message 
     /** Setup the connection parameters and establish TCP connection! */
     void _setupConnection( ) throw( SickIOException, SickTimeoutException );
   
+    /** Set access mode for configuring device */
+    void _setAuthorizedClientAccessMode( ) throw( SickTimeoutException, SickErrorException, SickIOException );
+
     /** Synchronizes the driver state with the Sick LD (used for initialization) */
     void _syncDriverWithSick( ) throw( SickIOException, SickTimeoutException, SickErrorException );
 
@@ -598,6 +630,8 @@ class SickNav350 : public SickLIDAR< SickNav350BufferMonitor, SickNav350Message 
     void _ParseScanDataLandMark();
 
     void _ParseScanDataNavigation();
+
+    void _ParseScanDataMapping();
 
     /**Convert Hex to number*/
     int _ConvertHexToDec(std::string num);
