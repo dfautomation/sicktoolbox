@@ -62,8 +62,25 @@ const std::string SickNav350::GETDATALANDMARK_COMMAND="mNLMDGetData";
 const std::string SickNav350::GETDATANAVIGATION_COMMAND_TYPE="sMN";
 const std::string SickNav350::GETDATANAVIGATION_COMMAND="mNPOSGetData";
 
+const std::string SickNav350::DOMAPPING_COMMAND_TYPE ="sMN";
+const std::string SickNav350::DOMAPPING_COMMAND="mNMAPDoMapping";
 
-  /**
+const std::string SickNav350::CONFIGMAPPING_COMMAND_TYPE="sWN";
+const std::string SickNav350::CONFIGMAPPING_COMMAND="NMAPMapCfg";
+
+const std::string SickNav350::SETCURRLAYER_COMMAND_TYPE="sWN";
+const std::string SickNav350::SETCURRLAYER_COMMAND="NEVACurrLayer";
+
+const std::string SickNav350::SETREFTYPE_COMMAND_TYPE="sWN";
+const std::string SickNav350::SETREFTYPE_COMMAND="NLMDReflType";
+
+const std::string SickNav350::SETREFSIZE_COMMAND_TYPE="sWN";
+const std::string SickNav350::SETREFSIZE_COMMAND="NLMDReflSize";
+
+const std::string SickNav350::ADDLANDMARK_COMMAND_TYPE="sMN";
+const std::string SickNav350::ADDLANDMARK_COMMAND="mNLAYAddLandmark";
+
+/**
    * \brief A standard constructor
    * \param sick_ip_address The ip address of the Sick Nav350
    * \param sick_tcp_port The TCP port associated w/ the Sick Nav350 server
@@ -105,7 +122,9 @@ const std::string SickNav350::GETDATANAVIGATION_COMMAND="mNPOSGetData";
       _startListening();
       std::cout << "\t\tBuffer monitor started!" << std::endl;
     
-      
+      std::cout << "\tAttempting Login as Authorized Client ..." << std::endl;
+      _setAuthorizedClientAccessMode();
+     // std::cout << "\t\tLogin Success" << std::endl;
     }
     
     catch(SickIOException &sick_io_exception) {
@@ -331,7 +350,103 @@ const std::string SickNav350::GETDATANAVIGATION_COMMAND="mNPOSGetData";
   }
 
 
+  void SickNav350::_setAuthorizedClientAccessMode() throw( SickTimeoutException, SickErrorException, SickIOException ) {
+	    /* Allocate a single buffer for payload contents */
+	    uint8_t payload_buffer[SickNav350Message::MESSAGE_PAYLOAD_MAX_LENGTH] = {0};
 
+	    /* Set the command type */
+	    payload_buffer[0]  = 's';
+	    payload_buffer[1]  = 'M';
+	    payload_buffer[2]  = 'N';
+
+	    payload_buffer[3]  = ' ';
+
+	    /* Set the command */
+	    payload_buffer[4]  = 'S';
+	    payload_buffer[5]  = 'e';
+	    payload_buffer[6]  = 't';
+	    payload_buffer[7]  = 'A';
+	    payload_buffer[8]  = 'c';
+	    payload_buffer[9]  = 'c';
+	    payload_buffer[10] = 'e';
+	    payload_buffer[11] = 's';
+	    payload_buffer[12] = 's';
+	    payload_buffer[13] = 'M';
+	    payload_buffer[14] = 'o';
+	    payload_buffer[15] = 'd';
+	    payload_buffer[16] = 'e';
+
+	    payload_buffer[17] = ' ';
+
+	    /* Set as authorized client */
+	    payload_buffer[18] = '3';
+	  //  payload_buffer[19] = '3';
+
+	    payload_buffer[19] = ' ';
+
+	    /* Encoded value for client */
+	    payload_buffer[20] = 'F';
+	    payload_buffer[21] = '4';
+	    payload_buffer[22] = '7';
+	    payload_buffer[23] = '2';
+	    payload_buffer[24] = '4';
+	    payload_buffer[25] = '7';
+	    payload_buffer[26] = '4';
+	    payload_buffer[27] = '4';
+
+	    /* Construct command message */
+	    SickNav350Message send_message(payload_buffer,28);
+
+	    /* Setup container for recv message */
+	    SickNav350Message recv_message;
+
+	    uint8_t byte_sequence[] = {'s','A','N',' ','S','e','t','A','c','c','e','s','s','M','o','d','e'};
+
+	    int byte_sequence_length=8;
+	    /* Send message and get reply using parent's method */
+	    try {
+
+	      _sendMessageAndGetReply(send_message, recv_message);
+	     // send_message.Print();
+	     // recv_message.Print();
+	    // _recvMessage(recv_message,byte_sequence,byte_sequence_length,DEFAULT_SICK_MESSAGE_TIMEOUT);
+	      std::cout << "\t\tLogin Successful" << std::endl;
+
+	    }
+
+	    /* Handle a timeout! */
+	    catch (SickTimeoutException &sick_timeout_exception) {
+	      std::cerr << sick_timeout_exception.what() << std::endl;
+	      throw;
+	    }
+
+	    /* Handle write buffer exceptions */
+	    catch (SickIOException &sick_io_exception) {
+	      std::cerr << sick_io_exception.what() << std::endl;
+	      throw;
+	    }
+
+	    /* A safety net */
+	    catch (...) {
+	      std::cerr << "SickNav350::_setAuthorizedClientAccessMode: Unknown exception!!!" << std::endl;
+	      throw;
+	    }
+
+	    /* Reset the buffer (not necessary, but its better to do so just in case) */
+	    memset(payload_buffer,0,28);
+
+	    /* Extract the message payload */
+	    recv_message.GetPayload(payload_buffer);
+
+	    /* Check Response */
+	    if (payload_buffer[18] != '1') {
+	      throw SickErrorException("SickNav350::_setAuthorizedClientAccessMode: Setting Access Mode Failed!");
+	    }
+
+	    /* Success! Woohoo! */
+
+
+  }
 
   /**
    * \brief Sets the Sick Nav350 to the requested sensor mode
@@ -516,7 +631,71 @@ const std::string SickNav350::GETDATANAVIGATION_COMMAND="mNPOSGetData";
 
   void SickNav350::GetSickIdentity()
   {
-	  _getSickIdentity();
+	//  _getSickIdentity();
+
+	  uint8_t payload_buffer[SickNav350Message::MESSAGE_PAYLOAD_MAX_LENGTH] = {0};
+	  /* Set the command type */
+		    payload_buffer[0]  = 's';
+		    payload_buffer[1]  = 'R';
+		    payload_buffer[2]  = 'N';
+
+		    payload_buffer[3]  = ' ';
+
+		    /* Set the command */
+		    payload_buffer[4]  = 'N';
+		    payload_buffer[5]  = 'L';
+		    payload_buffer[6]  = 'M';
+		    payload_buffer[7]  = 'D';
+		    payload_buffer[8]  = 'R';
+		    payload_buffer[9]  = 'e';
+		    payload_buffer[10] = 'f';
+		    payload_buffer[11] = 'l';
+		    payload_buffer[12] = 'S';
+		    payload_buffer[13] = 'i';
+		    payload_buffer[14] = 'z';
+		    payload_buffer[15] = 'e';
+		//    payload_buffer[16] = 'e';
+
+
+		    /* Construct command message */
+		    SickNav350Message send_message(payload_buffer,16);
+
+		    /* Setup container for recv message */
+		    SickNav350Message recv_message;
+
+		    uint8_t byte_sequence[] = {'s','R','A',' ','N','L','M','D','R','e','f','l','S','i','z','e'};
+
+		    int byte_sequence_length=10;
+		    /* Send message and get reply using parent's method */
+		    try {
+
+		      _sendMessageAndGetReply(send_message, recv_message);
+		     // send_message.Print();
+		  //    std::cout << "\t\tSize " << std::endl;
+		      recv_message.Print();
+		    // _recvMessage(recv_message,byte_sequence,byte_sequence_length,DEFAULT_SICK_MESSAGE_TIMEOUT);
+
+		    }
+
+		    /* Handle a timeout! */
+		    catch (SickTimeoutException &sick_timeout_exception) {
+		      std::cerr << sick_timeout_exception.what() << std::endl;
+		      throw;
+		    }
+
+		    /* Handle write buffer exceptions */
+		    catch (SickIOException &sick_io_exception) {
+		      std::cerr << sick_io_exception.what() << std::endl;
+		      throw;
+		    }
+
+		    /* A safety net */
+		    catch (...) {
+		      std::cerr << "SickNav350::_setAuthorizedClientAccessMode: Unknown exception!!!" << std::endl;
+		      throw;
+		    }
+
+
   }
   void SickNav350::_getSickIdentity( )
   {
@@ -602,6 +781,7 @@ const std::string SickNav350::GETDATANAVIGATION_COMMAND="mNPOSGetData";
 	    /* Send the message and check the reply */
 	    try {
 	      _sendMessageAndGetReply(send_message,recv_message);
+	 	 //  recv_message.Print();
 	      _recvMessage(recv_message,byte_sequence,byte_sequence_length,DEFAULT_SICK_MESSAGE_TIMEOUT);
 	      //sick_nav350_sector_data_t.
 //	      _SplitReceivedMessage(recv_message);
@@ -1198,11 +1378,13 @@ const std::string SickNav350::GETDATANAVIGATION_COMMAND="mNPOSGetData";
 
  	      _sendMessageAndGetReply(send_message,recv_message);
 //	      std::cout<<"first message"<<std::endl;
+ 	 // 	   recv_message.Print();
 	      _recvMessage(recv_message,byte_sequence,byte_sequence_length,DEFAULT_SICK_MESSAGE_TIMEOUT);
 //	      std::cout<<"second message"<<std::endl;
 
 	      //sick_nav350_sector_data_t.=0;
 	      _SplitReceivedMessage(recv_message);
+	    //  recv_message.Print();
 //	       std::cout<<"argument count="<<argumentcount_<<std::endl;
 	      _ParseScanDataNavigation();
 //	      std::cout<<"Get data"<<std::endl;
@@ -1259,6 +1441,7 @@ const std::string SickNav350::GETDATANAVIGATION_COMMAND="mNPOSGetData";
 		  PoseData_.y=_ConvertHexToDec(arg[count++]);
 		  PoseData_.phi=_ConvertHexToDec(arg[count++]);
 		  PoseData_.optionalPoseData=_ConvertHexToDec(arg[count++]);
+		 // std::cout<<"optionalPoseData: "<<PoseData_.optionalPoseData<<std::endl;
 		  if (PoseData_.optionalPoseData==1)
 		  {
 			  PoseData_.outputMode=_ConvertHexToDec(arg[count++]);
@@ -1266,7 +1449,9 @@ const std::string SickNav350::GETDATANAVIGATION_COMMAND="mNPOSGetData";
 			  PoseData_.meanDeviation=_ConvertHexToDec(arg[count++]);
 			  PoseData_.positionMode=_ConvertHexToDec(arg[count++]);
 			  PoseData_.infoState=_ConvertHexToDec(arg[count++]);
+			 // std::cout<<"infoState: "<<PoseData_.infoState<<std::endl;
 			  PoseData_.numUsedReflectors=_ConvertHexToDec(arg[count++]);
+			 // std::cout<<"numUsedReflectors: "<<PoseData_.numUsedReflectors<<std::endl;
 		  }
 
 	  }
@@ -1372,6 +1557,594 @@ const std::string SickNav350::GETDATANAVIGATION_COMMAND="mNPOSGetData";
 		  std::cout<<"Two output channels"<<std::endl;
 		  break;
 	  }
+
+
+  }
+
+  void SickNav350::DoMapping()
+    {
+  	    uint8_t payload_buffer[SickNav350Message::MESSAGE_PAYLOAD_MAX_LENGTH] = {0};
+  	    int count=0;
+  	    std::string command_type=this->DOMAPPING_COMMAND_TYPE;
+  	    std::string command=this->DOMAPPING_COMMAND;
+  	    for (int i=0;i<command_type.length();i++)
+  	    {
+  	    	payload_buffer[count]=command_type[i];
+  	    	count++;
+  	    }
+  	    payload_buffer[count]=' ';
+  	    count++;
+  	    for (int i=0;i<command.length();i++)
+  	    {
+  	    	payload_buffer[count]=command[i];
+  	    	count++;
+  	    }
+
+  	    /* Create the Sick messages */
+  	    SickNav350Message send_message(payload_buffer,count);
+  	    SickNav350Message recv_message;
+
+
+  	    uint8_t byte_sequence[] = {115,65,78,32,109,78,77,65,80,68,111,77,97,112,112,105,110,103};
+  	    int byte_sequence_length=9;
+
+
+  	    /* Send the message and check the reply */
+  	    try {
+  //		      std::cout<<"before first message"<<std::endl;
+
+   	      _sendMessageAndGetReply(send_message,recv_message);
+   	   recv_message.Print();
+  //	      std::cout<<"first message"<<std::endl;
+  	      _recvMessage(recv_message,byte_sequence,byte_sequence_length,DEFAULT_SICK_MESSAGE_TIMEOUT);
+  //	      std::cout<<"second message"<<std::endl;
+
+  	      _SplitReceivedMessage(recv_message);
+  //	       std::cout<<"argument count="<<argumentcount_<<std::endl;
+  	      _ParseScanDataMapping();
+  	//      std::cout<<"Mapping Successful"<<std::endl;
+  	    }
+
+  	    catch(SickTimeoutException &sick_timeout_exception) {
+  	      std::cerr << "sick_timeout_except=0;ion" << std::endl;
+
+  	      throw;
+  	    }
+
+  	    catch(SickIOException &sick_io_exception) {
+  	      std::cerr << "sick_io_exception" << std::endl;
+  	      throw;
+  	    }
+
+  	    catch(...) {
+  	      std::cerr << "SickNav350::_get data - Unknown exception!" << std::endl;
+  	      throw;
+  	    }
+    }
+
+  void SickNav350::_ParseScanDataMapping()
+    {
+	  /*	  for (int i=0;i<this->argumentcount_;i++)
+	  	  {
+	  		  std::cout<<" "<<arg[i];
+	  	  }
+	  	  std::cout<<std::endl;*/
+	  	  int count=0;
+	  	  if (arg[2]!="0")
+	  	  {
+	  		  std::cout<<"Scan data unsuccessful"<<std::endl;
+	  		  return;
+	  	  }
+/*	  	  if (arg[5]<"1")
+	  	  {
+	  		 std::cout<<"Wrong selected signals"<<std::endl;
+	  		 return;
+	  	  }
+*/	  	  count=2;
+	  /*	  if (arg[count++]=="1")
+	  	  {
+	  		  std::cout<<"Pose data follow"<<std::endl;
+	  		  std::cout<<arg[count++]+" "+arg[count++]+" "+arg[count++]<<std::endl;
+	  		  if (arg[count++]=="1")
+	  		  {
+	  		  }
+	  	  }*/
+	  	  if (arg[count++]=="1")
+	  	  {
+	  		//std::cout<<"Landmark data follow"<<std::endl;
+	  				  ReflectorData_.filter=_ConvertHexToDec(arg[count++]);
+	  				//  std::cout<<"Landmark filter "<<std::endl;
+	  				  int refcount=atoi(arg[count++].c_str());
+	  				  ReflectorData_.num_reflector=refcount;
+	  		//		  std::cout<<"reflector count: "<<refcount<<std::endl;
+	  				  for (int i=0;i<refcount;i++)
+	  				  {
+	  					  if (arg[count++]=="0")
+	  					  {
+	  						  ReflectorData_.cart[i]=0;
+	  		//				  std::cout<<"Not Cartesian"<<std::endl;
+	  					  }
+	  					  else
+	  					  {
+	  		//				  std::cout<<"Cartesian"<<std::endl;
+	  						  ReflectorData_.cart[i]=1;
+	  						  ReflectorData_.x[i]=_ConvertHexToDec(arg[count++]);
+	  						  ReflectorData_.y[i]=_ConvertHexToDec(arg[count++]);
+
+	  					  }
+	  					  if (arg[count++]=="0")
+	  					  {
+	  						  ReflectorData_.polar[i]=0;
+
+	  		//				  std::cout<<"Not Polar"<<std::endl;
+	  					  }
+	  					  else
+	  					  {
+	  		//				  std::cout<<"Polar"<<std::endl;
+	  						  ReflectorData_.polar[i]=1;
+	  						  ReflectorData_.dist[i]=_ConvertHexToDec(arg[count++]);
+	  						  ReflectorData_.phi[i]=_ConvertHexToDec(arg[count++]);
+	  					  }
+	  					  if (arg[count++]=="1")
+	  					  {
+	  						  ReflectorData_.optional[i]=1;
+
+	  		//				  std::cout<<"optional reflector data"<<std::endl;
+	  						  ReflectorData_.LocalID[i]=_ConvertHexToDec(arg[count++]);
+	  						  ReflectorData_.GlobalID[i]=_ConvertHexToDec(arg[count++]);
+	  						  ReflectorData_.type[i]=_ConvertHexToDec(arg[count++]);
+	  						  ReflectorData_.subtype[i]=_ConvertHexToDec(arg[count++]);
+	  						  ReflectorData_.quality[i]=_ConvertHexToDec(arg[count++]);
+	  						  ReflectorData_.timestamp[i]=_ConvertHexToDec(arg[count++]);
+	  						  ReflectorData_.size[i]=_ConvertHexToDec(arg[count++]);
+	  						  ReflectorData_.hitCount[i]=_ConvertHexToDec(arg[count++]);
+	  						  ReflectorData_.meanEchoAmplitude[i]=_ConvertHexToDec(arg[count++]);
+	  						  ReflectorData_.indexStart[i]=_ConvertHexToDec(arg[count++]);
+	  						  ReflectorData_.indexEnd[i]=_ConvertHexToDec(arg[count++]);
+
+	  					  }
+	  					  else
+	  					  {
+	  						  ReflectorData_.optional[i]=0;
+	  						  std::cout<<"no optional reflector data"<<std::endl;
+	  					  }
+	  				  }
+	  //		  for ()
+	  	  }
+
+    }
+
+ void SickNav350::ConfigureMapping(uint8_t mean,uint8_t neg,double x,double y,double phi)
+    {
+  	  std::cout<<"configure mapping command"<<std::endl;
+  	    uint8_t payload_buffer[SickNav350Message::MESSAGE_PAYLOAD_MAX_LENGTH] = {0};
+  	    int count=0;
+  	    std::string command_type=this->CONFIGMAPPING_COMMAND_TYPE;
+  	    std::string command=this->CONFIGMAPPING_COMMAND;
+  	    for (int i=0;i<command_type.length();i++)
+  	    {
+  	    	payload_buffer[count]=command_type[i];
+  	    	count++;
+  	    }
+  	    payload_buffer[count]=' ';
+  	    count++;
+  	    for (int i=0;i<command.length();i++)
+  	    {
+  	    	payload_buffer[count]=command[i];
+  	    	count++;
+  	    }
+  	    payload_buffer[count]=' ';
+  	    count++;
+
+  	    char c[100];
+   	    sprintf(c,"%d",(int)mean);
+    	    for (int i=0;i<strlen(c);i++)
+	    	  	{
+	    	    	payload_buffer[count]=c[i];
+                    count++;
+   	  	        }
+  	    payload_buffer[count]=' ';
+  	   	count++;
+  	   	payload_buffer[count]=48+neg;
+  	   	count++;
+
+  	    
+  	  	    sprintf(c,"%d",(int)(x*1000));
+  	  	    if (c[0]!='-')
+  	  	    {
+  	  		    payload_buffer[count]='+';
+  	  		    count++;
+  	  	    }
+  	  	    for (int i=0;i<strlen(c);i++)
+  	  	    {
+  	  	    	payload_buffer[count]=c[i];
+  	  	    	count++;
+  	  	    }
+  	  	    payload_buffer[count]=' ';
+  	  	    count++;
+
+  	  	    sprintf(c,"%d",(int)(y*1000));
+  	  	    if (c[0]!='-')
+  	  	    {
+  	  		    payload_buffer[count]='+';
+  	  		    count++;
+  	  	    }
+  	  	    for (int i=0;i<strlen(c);i++)
+  	  	    {
+  	  	    	payload_buffer[count]=c[i];
+  	  	    	count++;
+  	  	    }
+  	  	    payload_buffer[count]=' ';
+  	  	    count++;
+
+  	  	    sprintf(c,"%d",(int)(phi/3.14159*180*1000));
+  	  	    if (c[0]!='-')
+  	  	    {
+  	  		    payload_buffer[count]='+';
+  	  		    count++;
+  	  	    }
+  	  	    for (int i=0;i<strlen(c);i++)
+  	  	    {
+  	  	    	payload_buffer[count]=c[i];
+  	  	    	count++;
+  	  	    }
+  	    /* Create the Sick messages */
+  	    SickNav350Message send_message(payload_buffer,count);
+  	    SickNav350Message recv_message;
+
+
+  	    uint8_t byte_sequence[] = {115,87,65,32,78,77,65,80,77,97,112,67,102,103};
+  	    int byte_sequence_length=8;
+
+
+  	    /* Send the message and check the reply */
+  	    try {
+  	      _sendMessageAndGetReply(send_message,recv_message);
+  	      _recvMessage(recv_message,byte_sequence,byte_sequence_length,DEFAULT_SICK_MESSAGE_TIMEOUT);
+  	      //sick_nav350_sector_data_t.
+  //	      _SplitReceivedMessage(recv_message);
+
+  	      std::cout<<"Configured mapping"<<std::endl;
+  	    }
+
+  	    catch(SickTimeoutException &sick_timeout_exception) {
+  	      std::cerr << "sick_timeout_exception" << std::endl;
+
+  	      throw;
+  	    }
+
+  	    catch(SickIOException &sick_io_exception) {
+  	      std::cerr << "sick_io_exception" << std::endl;
+  	      throw;
+  	    }
+
+  	    catch(...) {
+  	      std::cerr << "SickNav350::_set operating mode - Unknown exception!" << std::endl;
+  	      throw;
+  	    }
+
+    }
+
+  void SickNav350::SetCurrentLayer(uint16_t currLayer)
+  {
+     std::cout<<"set current layer command"<<std::endl;
+  	    uint8_t payload_buffer[SickNav350Message::MESSAGE_PAYLOAD_MAX_LENGTH] = {0};
+  	    int count=0;
+  	    std::string command_type=this->SETCURRLAYER_COMMAND_TYPE;
+  	    std::string command=this->SETCURRLAYER_COMMAND;
+  	    for (int i=0;i<command_type.length();i++)
+  	    {
+  	    	payload_buffer[count]=command_type[i];
+  	    	count++;
+  	    }
+  	    payload_buffer[count]=' ';
+  	    count++;
+  	    for (int i=0;i<command.length();i++)
+  	    {
+  	    	payload_buffer[count]=command[i];
+  	    	count++;
+  	    }
+  	    payload_buffer[count]=' ';
+  	    count++;
+
+   	    char c[100];
+   	    sprintf(c,"%d",(int)currLayer);
+    	    for (int i=0;i<strlen(c);i++)
+	    	  	{
+	    	    	payload_buffer[count]=c[i];
+                    count++;
+   	  	        }
+
+  	    /* Create the Sick messages */
+  	    SickNav350Message send_message(payload_buffer,count);
+  	    SickNav350Message recv_message;
+
+
+  	    uint8_t byte_sequence[] = {115,87,65,32,78,69,86,65,67,117,114,114,76,97,121,101,114};
+  	    int byte_sequence_length=8;
+
+
+  	    /* Send the message and check the reply */
+  	    try {
+  	      _sendMessageAndGetReply(send_message,recv_message);
+  	      _recvMessage(recv_message,byte_sequence,byte_sequence_length,DEFAULT_SICK_MESSAGE_TIMEOUT);
+  	      //sick_nav350_sector_data_t.
+  //	      _SplitReceivedMessage(recv_message);
+
+  	      std::cout<<"Set current layer"<<std::endl;
+  	    }
+
+  	    catch(SickTimeoutException &sick_timeout_exception) {
+  	      std::cerr << "sick_timeout_exception" << std::endl;
+
+  	      throw;
+  	    }
+
+  	    catch(SickIOException &sick_io_exception) {
+  	      std::cerr << "sick_io_exception" << std::endl;
+  	      throw;
+  	    }
+
+  	    catch(...) {
+  	      std::cerr << "SickNav350::_set operating mode - Unknown exception!" << std::endl;
+  	      throw;
+  	    }
+  }
+
+  void SickNav350::SetReflectorType(int type)
+   {
+      std::cout<<"set reflector type command"<<std::endl;
+   	    uint8_t payload_buffer[SickNav350Message::MESSAGE_PAYLOAD_MAX_LENGTH] = {0};
+   	    int count=0;
+   	    std::string command_type=this->SETREFTYPE_COMMAND_TYPE;
+   	    std::string command=this->SETREFTYPE_COMMAND;
+   	    for (int i=0;i<command_type.length();i++)
+   	    {
+   	    	payload_buffer[count]=command_type[i];
+   	    	count++;
+   	    }
+   	    payload_buffer[count]=' ';
+   	    count++;
+   	    for (int i=0;i<command.length();i++)
+   	    {
+   	    	payload_buffer[count]=command[i];
+   	    	count++;
+   	    }
+   	    payload_buffer[count]=' ';
+   	    count++;
+   	    payload_buffer[count]=48+type;
+   	    count++;
+
+   	    /* Create the Sick messages */
+   	    SickNav350Message send_message(payload_buffer,count);
+   	    SickNav350Message recv_message;
+
+
+   	    uint8_t byte_sequence[] = {115,87,65,32,78,76,77,68,82,101,102,108,84,121,112,101};
+   	    int byte_sequence_length=8;
+
+
+   	    /* Send the message and check the reply */
+   	    try {
+   	      _sendMessageAndGetReply(send_message,recv_message);
+   	  // send_message.Print();
+   	 //  recv_message.Print();
+   	     // _recvMessage(recv_message,byte_sequence,byte_sequence_length,DEFAULT_SICK_MESSAGE_TIMEOUT);
+   	      //sick_nav350_sector_data_t.
+   //	      _SplitReceivedMessage(recv_message);
+
+   	      std::cout<<"Set reflector type"<<std::endl;
+   	    }
+
+   	    catch(SickTimeoutException &sick_timeout_exception) {
+   	      std::cerr << "sick_timeout_exception" << std::endl;
+
+   	      throw;
+   	    }
+
+   	    catch(SickIOException &sick_io_exception) {
+   	      std::cerr << "sick_io_exception" << std::endl;
+   	      throw;
+   	    }
+
+   	    catch(...) {
+   	      std::cerr << "SickNav350::_set operating mode - Unknown exception!" << std::endl;
+   	      throw;
+   	    }
+   }
+
+  void SickNav350::SetReflectorSize(uint16_t size)
+   {
+      std::cout<<"set reflector size command"<<std::endl;
+   	    uint8_t payload_buffer[SickNav350Message::MESSAGE_PAYLOAD_MAX_LENGTH] = {0};
+   	    int count=0;
+   	    std::string command_type=this->SETREFSIZE_COMMAND_TYPE;
+   	    std::string command=this->SETREFSIZE_COMMAND;
+   	    for (int i=0;i<command_type.length();i++)
+   	    {
+   	    	payload_buffer[count]=command_type[i];
+   	    	count++;
+   	    }
+   	    payload_buffer[count]=' ';
+   	    count++;
+   	    for (int i=0;i<command.length();i++)
+   	    {
+   	    	payload_buffer[count]=command[i];
+   	    	count++;
+   	    }
+   	    payload_buffer[count]=' ';
+   	    count++;
+
+   	    char c[100];
+   	    sprintf(c,"%d",(int)size);
+    	    for (int i=0;i<strlen(c);i++)
+	    	  	{
+	    	    	payload_buffer[count]=c[i];
+                    count++;
+   	  	        }
+
+   	    /* Create the Sick messages */
+   	    SickNav350Message send_message(payload_buffer,count);
+   	    SickNav350Message recv_message;
+
+
+   	    uint8_t byte_sequence[] = {115,87,65,32,78,76,77,68,82,101,102,108,83,105,122,101};
+   	    int byte_sequence_length=8;
+
+
+   	    /* Send the message and check the reply */
+   	    try {
+   	      _sendMessageAndGetReply(send_message,recv_message);
+   	   //recv_message.Print();
+   	   //   _recvMessage(recv_message,byte_sequence,byte_sequence_length,DEFAULT_SICK_MESSAGE_TIMEOUT);
+   	      //sick_nav350_sector_data_t.
+   //	      _SplitReceivedMessage(recv_message);
+
+   	      std::cout<<"Set reflector size"<<std::endl;
+   	    }
+
+   	    catch(SickTimeoutException &sick_timeout_exception) {
+   	      std::cerr << "sick_timeout_exception" << std::endl;
+
+   	      throw;
+   	    }
+
+   	    catch(SickIOException &sick_io_exception) {
+   	      std::cerr << "sick_io_exception" << std::endl;
+   	      throw;
+   	    }
+
+   	    catch(...) {
+   	      std::cerr << "SickNav350::_set operating mode - Unknown exception!" << std::endl;
+   	      throw;
+   	    }
+   }
+
+  void SickNav350::AddLandmark(uint16_t landmarkData,double x, double y,int type,int subtype,uint16_t size,uint16_t layerID,uint16_t ID)
+  {
+	  std::cout<<"Add Landmark command"<<std::endl;
+	    	    uint8_t payload_buffer[SickNav350Message::MESSAGE_PAYLOAD_MAX_LENGTH] = {0};
+	    	    int count=0;
+	    	    std::string command_type=this->ADDLANDMARK_COMMAND_TYPE;
+	    	    std::string command=this->ADDLANDMARK_COMMAND;
+	    	    for (int i=0;i<command_type.length();i++)
+	    	    {
+	    	    	payload_buffer[count]=command_type[i];
+	    	    	count++;
+	    	    }
+	    	    payload_buffer[count]=' ';
+	    	    count++;
+	    	    for (int i=0;i<command.length();i++)
+	    	    {
+	    	    	payload_buffer[count]=command[i];
+	    	    	count++;
+	    	    }
+	    	    payload_buffer[count]=' ';
+	    	    count++;
+	    	    char c[100];
+	    	    sprintf(c,"%d",(int)landmarkData);
+	    	    for (int i=0;i<strlen(c);i++)
+	    	  	{
+	    	    	payload_buffer[count]=c[i];
+                    count++;
+ 	  	        }
+	    	    payload_buffer[count]=' ';
+	    	    count++;
+
+	    	    sprintf(c,"%d",(int)(x*1000));
+	    	  	    if (c[0]!='-')
+	    	  	    {
+	    	  		    payload_buffer[count]='+';
+	    	  		    count++;
+	    	  	    }
+	    	  	    for (int i=0;i<strlen(c);i++)
+	    	  	    {
+	    	  	    	payload_buffer[count]=c[i];
+	    	  	    	count++;
+	    	  	    }
+	    	  	    payload_buffer[count]=' ';
+	    	  	    count++;
+
+	    	  	    sprintf(c,"%d",(int)(y*1000));
+	    	  	    if (c[0]!='-')
+	    	  	    {
+	    	  		    payload_buffer[count]='+';
+	    	  		    count++;
+	    	  	    }
+	    	  	    for (int i=0;i<strlen(c);i++)
+	    	  	    {
+	    	  	    	payload_buffer[count]=c[i];
+	    	  	    	count++;
+	    	  	    }
+	    	  	    payload_buffer[count]=' ';
+	    	  	    count++;
+
+	    	  	    payload_buffer[count]=48+type;
+	    	  		count++;
+	    	  		payload_buffer[count]=' ';
+	    	  		count++;
+	    	  		payload_buffer[count]=48+subtype;
+	                count++;
+	                payload_buffer[count] = ' ';
+	                count++;
+		    	    sprintf(c,"%d",(int)size);
+		    	    for (int i=0;i<strlen(c);i++)
+		    	  	{
+		    	    	payload_buffer[count]=c[i];
+	                    count++;
+	 	  	        }
+		    	    payload_buffer[count]=' ';
+		    	    count++;
+	                payload_buffer[count]=48+layerID;
+	                count++;
+	                payload_buffer[count] = ' ';
+	                count++;
+
+	                sprintf(c,"%d",(int)ID);
+	                for (int i=0;i<strlen(c);i++)
+	                   {
+	                    	payload_buffer[count]=c[i];
+	                    	count++;
+	                   }
+
+
+	    	    /* Create the Sick messages */
+	    	    SickNav350Message send_message(payload_buffer,count);
+	    	    SickNav350Message recv_message;
+
+
+	    	    uint8_t byte_sequence[] = {115,65,78,32,109,78,76,65,89,65,100,100,76,97,110,100,109,97,114,107};
+	    	    int byte_sequence_length=10;
+
+
+	    	    /* Send the message and check the reply */
+	    	    try {
+	    	      _sendMessageAndGetReply(send_message,recv_message);
+	    	      _recvMessage(recv_message,byte_sequence,byte_sequence_length,DEFAULT_SICK_MESSAGE_TIMEOUT);
+
+	              _SplitReceivedMessage(recv_message);
+	              if (arg[2]!="0")
+	              	  	  {
+	    	                std::cout<<"Adding Landmark Unsuccessful"<<std::endl;
+	              	  	  }
+	              else std::cout<<"Adding Landmark Successful"<<std::endl;
+	    	    }
+
+	    	    catch(SickTimeoutException &sick_timeout_exception) {
+	    	      std::cerr << "sick_timeout_exception" << std::endl;
+
+	    	      throw;
+	    	    }
+
+	    	    catch(SickIOException &sick_io_exception) {
+	    	      std::cerr << "sick_io_exception" << std::endl;
+	    	      throw;
+	    	    }
+
+	    	    catch(...) {
+	    	      std::cerr << "SickNav350::_set operating mode - Unknown exception!" << std::endl;
+	    	      throw;
+	    	    }
 
 
   }
